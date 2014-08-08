@@ -74,31 +74,81 @@ enum {PA_NONE, PA_TRACK, PA_ALBUM, PA_N} pauseafter_what = PA_NONE;
 
 void pauseafter_track()
 {
-    pauseafter_what = PA_TRACK;
-    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+    if (pauseafter_what != PA_NONE){
+        pauseafter_what = PA_TRACK;
+        gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+    } else {
+        pauseafter_what = PA_NONE;
+        gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), NULL);
+    }
 }
 
 void pauseafter_album()
 {
-    pauseafter_what = PA_ALBUM;
-    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(album), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+    if (pauseafter_what != PA_NONE){
+        pauseafter_what = PA_ALBUM;
+        gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(album), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+    } else {
+        pauseafter_what = PA_NONE;
+        gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(album), NULL);
+    }
 }
 
 gulong N = 0;
+gulong pauseafter_getN();
+
 void pauseafter_ntracks()
 {
-    pauseafter_what = PA_N;
-    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+    if ((pauseafter_what != PA_NONE) && ( N = pauseafter_getN() )){
+        pauseafter_what = PA_N;
+        gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+    } else {
+        pauseafter_what = PA_NONE;
+        gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), NULL);
+    }
 }
 
+gulong pauseafter_getN(){
+    GtkWidget *dialog = NULL;
+    GtkWidget *label, *spin, *box;
+    GtkCellRenderer * renderer;
+
+    dialog = gtk_dialog_new_with_buttons("How much tracks to wait?", GTK_WINDOW(glade_xml_get_widget(pl3_xml, "pl3_win")), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT, GTK_STOCK_OK, GTK_RESPONSE_ACCEPT, NULL);
+
+    label = gtk_label_new("So?");
+    spin = gtk_spin_button_new(gtk_adjustment_new(0.,0.,100000.,1.,5.,5.), 1., 0);
+
+    box = gtk_dialog_get_content_area( GTK_DIALOG(dialog) );
+    gtk_box_pack_start(GTK_BOX(box), spin, true, true, 0);
+    gtk_box_pack_start(GTK_BOX(box), label, true, true, 0);
+
+    gulong res = 0;
+    gtk_widget_show_all(dialog);
+    switch(gtk_dialog_run(GTK_DIALOG(dialog))){
+        case GTK_RESPONSE_ACCEPT:
+            res = floor( gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin)) );
+        default:
+            break;
+    }
+
+    gtk_widget_destroy(dialog);
+}
 
 static void pauseafter_mpd_status_changed(MpdObj *mi, ChangedStatusType what, void *data){
     if (what&MPD_CST_SONGID){
         switch(pauseafter_what){
             case PA_TRACK:
                 mpd_player_pause(mi);
-                gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), NULL);
+                gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), NULL);
                 break;
+            case PA_N:
+                if (!N)
+                    N--;
+                else {
+                    mpd_player_pause(mi);
+                    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), NULL);
+                }
+                break;   
         }
         pauseafter_what = PA_NONE;
     }
@@ -121,7 +171,7 @@ int pauseafter_tool_menu(GtkWidget *menu)
     gtk_menu_append(GTK_MENU(submenu), album);
     gtk_menu_append(GTK_MENU(submenu), ntracks); 
     g_signal_connect(G_OBJECT(track), "activate", G_CALLBACK(pauseafter_track), NULL);    
-    g_signal_connect(G_OBJECT(album), "activate", G_CALLBACK(pauseafter_album) NULL);    
+    g_signal_connect(G_OBJECT(album), "activate", G_CALLBACK(pauseafter_album), NULL);    
     g_signal_connect(G_OBJECT(ntracks), "activate", G_CALLBACK(pauseafter_ntracks), NULL);   
 
     gtk_menu_item_set_submenu(item, submenu);
