@@ -29,6 +29,7 @@ int pauseafter_get_enabled(void);
 int pauseafter_tool_menu(GtkWidget *menu);
 
 extern GtkTreeModel *playlist;
+extern GtkBuilder *pl3_xml;
 /* Allow gmpc to check the version the plugin is compiled against */
 int plugin_api_version = PLUGIN_API_VERSION;
 
@@ -74,7 +75,7 @@ enum {PA_NONE, PA_TRACK, PA_ALBUM, PA_N} pauseafter_what = PA_NONE;
 
 void pauseafter_track()
 {
-    if (pauseafter_what != PA_NONE){
+    if (pauseafter_what == PA_NONE){
         pauseafter_what = PA_TRACK;
         gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
     } else {
@@ -85,7 +86,7 @@ void pauseafter_track()
 
 void pauseafter_album()
 {
-    if (pauseafter_what != PA_NONE){
+    if (pauseafter_what == PA_NONE){
         pauseafter_what = PA_ALBUM;
         gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(album), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
     } else {
@@ -99,7 +100,8 @@ gulong pauseafter_getN();
 
 void pauseafter_ntracks()
 {
-    if ((pauseafter_what != PA_NONE) && ( N = pauseafter_getN() )){
+    N = pauseafter_getN();  
+    if (N){
         pauseafter_what = PA_N;
         gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
     } else {
@@ -113,14 +115,18 @@ gulong pauseafter_getN(){
     GtkWidget *label, *spin, *box;
     GtkCellRenderer * renderer;
 
-    dialog = gtk_dialog_new_with_buttons("How much tracks to wait?", GTK_WINDOW(glade_xml_get_widget(pl3_xml, "pl3_win")), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT, GTK_STOCK_OK, GTK_RESPONSE_ACCEPT, NULL);
+    dialog = gtk_dialog_new_with_buttons("How much tracks to wait?", 
+            GTK_WINDOW(gtk_builder_get_object(pl3_xml, "pl3_win")), 
+            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, 
+            GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT, 
+            GTK_STOCK_OK, GTK_RESPONSE_ACCEPT, 
+            NULL);
 
-    label = gtk_label_new("So?");
-    spin = gtk_spin_button_new(gtk_adjustment_new(0.,0.,100000.,1.,5.,5.), 1., 0);
+    spin = gtk_spin_button_new( gtk_adjustment_new(0.,0.,100000.,1.,5.,5.) , 1., 0);
+    gtk_spin_button_set_value( GTK_SPIN_BUTTON(spin), N );
 
     box = gtk_dialog_get_content_area( GTK_DIALOG(dialog) );
-    gtk_box_pack_start(GTK_BOX(box), spin, true, true, 0);
-    gtk_box_pack_start(GTK_BOX(box), label, true, true, 0);
+    gtk_box_pack_start(GTK_BOX(box), spin, TRUE, TRUE, 0);
 
     gulong res = 0;
     gtk_widget_show_all(dialog);
@@ -132,6 +138,7 @@ gulong pauseafter_getN(){
     }
 
     gtk_widget_destroy(dialog);
+    return res;
 }
 
 static void pauseafter_mpd_status_changed(MpdObj *mi, ChangedStatusType what, void *data){
@@ -140,17 +147,16 @@ static void pauseafter_mpd_status_changed(MpdObj *mi, ChangedStatusType what, vo
             case PA_TRACK:
                 mpd_player_pause(mi);
                 gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), NULL);
+                pauseafter_what = PA_NONE;
                 break;
             case PA_N:
-                if (!N)
-                    N--;
-                else {
+                if (!N--){
                     mpd_player_pause(mi);
                     gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), NULL);
-                }
+                    pauseafter_what = PA_NONE;
+                } 
                 break;   
         }
-        pauseafter_what = PA_NONE;
     }
 }
 
