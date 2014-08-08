@@ -68,18 +68,27 @@ void pauseafter_set_enabled(int enabled)
 
 
 
+GtkWidget * track, *album, *ntracks;
 
 enum {PA_NONE, PA_TRACK, PA_ALBUM, PA_N} pauseafter_what = PA_NONE;
 
 void pauseafter_track()
 {
     pauseafter_what = PA_TRACK;
+    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+}
+
+void pauseafter_album()
+{
+    pauseafter_what = PA_ALBUM;
+    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(album), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
 }
 
 gulong N = 0;
 void pauseafter_ntracks()
 {
     pauseafter_what = PA_N;
+    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
 }
 
 
@@ -88,8 +97,10 @@ static void pauseafter_mpd_status_changed(MpdObj *mi, ChangedStatusType what, vo
         switch(pauseafter_what){
             case PA_TRACK:
                 mpd_player_pause(mi);
+                gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), NULL);
                 break;
         }
+        pauseafter_what = PA_NONE;
     }
 }
 
@@ -100,20 +111,18 @@ int pauseafter_tool_menu(GtkWidget *menu)
 
 
     item = gtk_image_menu_item_new_with_label("Pause after...");
-    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item),
-            gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
+    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item), gtk_image_new_from_stock(GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU));
  
     submenu = gtk_menu_new();
-    GtkWidget * track, *album, *ntracks;
-    track = gtk_menu_item_new_with_label("track");
-    //album = gtk_menu_item_new_with_label("album");
-    ntracks = gtk_menu_item_new_with_label("N tracks");
+    track = gtk_image_menu_item_new_with_label("Track");
+    album = gtk_image_menu_item_new_with_label("Album");
+    ntracks = gtk_image_menu_item_new_with_label("N tracks");
     gtk_menu_append(GTK_MENU(submenu), track);
-    //gtk_menu_append(GTK_MENU(submenu), album);
+    gtk_menu_append(GTK_MENU(submenu), album);
     gtk_menu_append(GTK_MENU(submenu), ntracks); 
     g_signal_connect(G_OBJECT(track), "activate", G_CALLBACK(pauseafter_track), NULL);    
-    //g_signal_connect(G_OBJECT(album), "activate", G_CALLBACK(shufpl_byalbum), NULL);    
-    g_signal_connect(G_OBJECT(artist), "activate", G_CALLBACK(pauseafter_ntracks), NULL);   
+    g_signal_connect(G_OBJECT(album), "activate", G_CALLBACK(pauseafter_album) NULL);    
+    g_signal_connect(G_OBJECT(ntracks), "activate", G_CALLBACK(pauseafter_ntracks), NULL);   
 
     gtk_menu_item_set_submenu(item, submenu);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
