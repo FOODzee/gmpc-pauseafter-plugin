@@ -1,7 +1,7 @@
 gmpc-pauseafter-plugin
 ======================
 
-Plugin for GMPC. Pauses playback after various events.
+Plugin for GMPC. Pauses playback after track/album ending or after N tracks played.
 
 
 Installation
