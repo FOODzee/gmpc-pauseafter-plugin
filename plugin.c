@@ -21,6 +21,7 @@
 #include <gmpc/plugin.h>
 #include <glade/glade.h>
 #include <libmpd/libmpd-internal.h>
+#include <libmpd/libmpdclient.h>
 #include <gmpc/misc.h>
 
 void pauseafter_set_enabled(int enabled);
@@ -84,6 +85,8 @@ void pauseafter_track()
     }
 }
 
+
+
 void pauseafter_album()
 {
     if (pauseafter_what == PA_NONE){
@@ -142,15 +145,27 @@ gulong pauseafter_getN(){
 }
 
 static void pauseafter_mpd_status_changed(MpdObj *mi, ChangedStatusType what, void *data){
+    mpd_Song *cur_song, *prev_song;
+    int cur_song_pos;
     if (what&MPD_CST_SONGID){
         switch(pauseafter_what){
             case PA_TRACK:
                 mpd_player_pause(mi);
-                gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), NULL);
+                gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(track), NULL);
                 pauseafter_what = PA_NONE;
                 break;
+            case PA_ALBUM:
+                cur_song_pos = mpd_player_get_current_song_pos(mi);
+                cur_song = mpd_playlist_get_song_from_pos( mi, cur_song_pos );
+                prev_song = mpd_playlist_get_song_from_pos( mi, cur_song_pos - 1 );
+                if (strcmp(cur_song->album, prev_song->album)){
+                    mpd_player_pause(mi);
+                    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(album), NULL);
+                    pauseafter_what = PA_NONE;
+                }
+                break;
             case PA_N:
-                if (!N--){
+                if (!--N){
                     mpd_player_pause(mi);
                     gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(ntracks), NULL);
                     pauseafter_what = PA_NONE;
